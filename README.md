@@ -97,16 +97,19 @@ The combined $68,985,917.34 is a **mixed-date sum**, not a single point-in-time 
 
 The current run is a snapshot in `reconciliation.run`; later runs append new statuses and AUM decisions rather than overwriting prior run results. Core refresh remains a current-snapshot rebuild and needs versioning before production use.
 
-## Next steps
+## Next steps: production-ready application
 
-1. Add tests for authorization and audit reversal behavior.
-2. Extend the offline explanation interface to an external model only after provider configuration, privacy review, and output validation are in place.
-3. Add a household-duplicate review queue and confirm the cross-source candidate relationships listed in `RECONCILIATION.md`.
+1. **Complete the Operations workflow.** Add a dedicated review queue for household duplicates and cross-source candidates (leading-zero account, wrong custodian, and possible ACAT overlap). Show the underlying evidence, owner, assignment, due date, and follow-up state for each item. Support a clear path from proposed fix through independent approval, rejection, undo, and source-system follow-up while preserving immutable audit history. Recheck active app resolutions against each new import batch. Keep all changes app-only until an explicitly designed and authorized integration exists.
+2. **Finish deployment and access controls.** Deploy the Netlify app against the configured Neon project, set trusted Auth origins, and provide a secure evaluator login. Replace the shared exercise password and master Operations account with individual identities. Use durable advisor IDs, strengthen database access controls for sensitive `raw` data, and verify advisor row visibility and Operations permissions at the API boundary.
+3. **Add a real LLM provider for Task 4.** Keep `mock/offline` as the default and add a separately configured server-side provider behind the existing interface. Send only the visible, allowlisted single-exception payload; keep source notes, tax identifiers, owner names, and email out of model input. Treat any source text as untrusted data, validate the model's structured JSON against a strict schema, escape display text, and require a human proposal and approval before any app decision. Add timeouts, error handling, cost controls, and a safe fallback to the offline provider.
+4. **Build an automated test suite.** Add API integration tests for Neon Auth verification, advisor household scoping, Operations-only actions, proposal state transitions, concurrent approvals, audit before/after values, and undo. Add UI tests for the three-tab workflow and exception explanation. Test prompt-injection fixtures, excluded sensitive fields, malformed model output, HTML escaping, and provider failure. Run import coverage, reconciliation/AUM regression, build, and security checks in CI against isolated test data.
+
+Historical reporting work is described separately under [Future work: historical AUM dashboards](#future-work-historical-aum-dashboards).
 
 ## Time log
 
 - Started: 2026-11-18 16:36 PST (repository setup and write-up scaffolding).
-- Ended: 2026-11-18 18:39 PST (including follow-up review and documentation).
+- Finished: 2026-11-18 18:42 PST (including final review and documentation updates).
 
 ## Operations app
 
