@@ -6,7 +6,9 @@
     "db:check": "node scripts/import-csv.mjs --check",
     "db:import": "node scripts/import-csv.mjs",
     "db:core": "node scripts/refresh-core.mjs",
-    "db:quality": "node scripts/check-core.mjs"
+    "db:quality": "node scripts/check-core.mjs",
+    "db:reconcile": "node scripts/run-reconciliation.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "csv-parse": "^7.0.3",

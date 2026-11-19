@@ -12,6 +12,7 @@ The five source CSV files belong in `data/`, which is ignored by Git. Do not com
 4. Run `npm run db:import` from the project root.
 5. Run `npm run db:core` to create and refresh the typed `core` model.
 6. Run `npm run db:quality` to check row coverage and typed transformations after each refresh.
+7. Run `npm test`, then `npm run db:reconcile` to create a new reconciliation run. Query the `reconciliation.current_*` views for current statuses, exceptions, and AUM. The complete source-row exception list from the first run is in [RECONCILIATION.md](RECONCILIATION.md).
 
 The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. The application and reconciliation logic remain to be built.
 
@@ -58,18 +59,31 @@ Source values are untrusted data. CSV cells and document text must never be inte
 
 ## Reconciliation statuses
 
-Proposed categories, to refine once matching rules are implemented:
+Every custodian observation and every Salesforce financial account receives one status in `reconciliation.account_status`. The first run covers all 128 source account rows. Candidate matches require the same custodian and normalized account number; only a one-to-one candidate can become `matched`.
 
 | Status | Meaning |
 | --- | --- |
-| Matched | A unique custodian account corresponds to a Salesforce financial account without a material conflict. |
-| Custodian only | No corresponding Salesforce financial account was found. |
-| Salesforce only | No corresponding custodian account was found. |
-| Conflicting | A candidate match has incompatible fields or ambiguous ownership. |
+| `matched` | A unique pair agrees on registration and advisor, Salesforce is open, and no value or advisor review flag applies. |
+| `custodian_only` | No Salesforce financial account has the same custodian and normalized account number. Other source concerns still appear in reason codes. |
+| `salesforce_only` | No custodian account has the same custodian and normalized account number. Other source concerns still appear in reason codes. |
+| `conflicting` | A candidate key is duplicated, or a unique pair has an advisor, registration, Salesforce status, missing-value, unmapped-advisor, or negative-value concern. |
+
+First run: 106 matched source rows (53 pairs), 5 custodian-only rows, 4 Salesforce-only rows, and 13 conflicting rows. The 22 non-matched source rows are the exception list. Reasons are stored as codes alongside each status; paired rows may both appear because each source record has its own status. No fuzzy name or partial tax-ID match is treated as proof.
 
 ## AUM
 
-Not calculated yet. The implementation will report totals by advisor and custodian, with source-specific value dates and an explicit overall as-of convention. It will avoid summing duplicate or ambiguous account rows without a documented rule.
+AUM comes from custodian market values, including accounts absent from Salesforce. The advisor is the custodian rep-code mapping; an unmapped code stays in an `Unmapped` bucket. The one blank value is excluded from numeric totals, not converted to zero. The duplicate Fidelity observations agree on value, date, advisor, registration, and owner context, so the account contributes once. An inconsistent duplicate would be excluded pending review. The negative value contributes as negative AUM and is flagged. Salesforce `Closed` or `Transferring` status does not erase a custodian-reported balance.
+
+| Advisor | Fidelity, as of 2026-11-06 | Schwab, as of 2026-10-30 | Mixed-date sum |
+| --- | ---: | ---: | ---: |
+| Dana Whitfield | $12,849,108.51 | $4,235,166.93 | $17,084,275.44 |
+| Marcus Lee | $12,640,535.52 | $3,022,067.60 | $15,662,603.12 |
+| Priya Nair | $9,947,381.76 | $5,097,991.30 | $15,045,373.06 |
+| Tom Alvarez | $11,031,094.98 | $7,756,134.82 | $18,787,229.80 |
+| Unmapped | $0.00 | $2,406,435.92 | $2,406,435.92 |
+| **Custodian total** | **$46,468,120.77** | **$22,517,796.57** | **$68,985,917.34** |
+
+The combined $68,985,917.34 is a **mixed-date sum**, not a single point-in-time AUM figure. The AUM ledger contains 64 custodian account keys: 63 included (43 Fidelity, 20 Schwab) and one Fidelity key excluded for missing value. It retains the duplicate's two source rows and its one included amount for auditability.
 
 ## Judgment calls
 
@@ -77,16 +91,17 @@ Not calculated yet. The implementation will report totals by advisor and custodi
 - Use a shared normalized model for both custodians.
 - Treat account identifiers as strings so formatting and leading zeros are preserved.
 - Do not infer household ownership from names or partial tax identifiers alone; ambiguous links become exceptions for review.
+- Use custodian plus normalized account number as the candidate key. Duplicate keys are conflicts even when their values agree; they are never silently treated as two accounts.
+- Keep missing, unmapped, negative, and non-open records in the status results. AUM inclusion follows the stated custodian-value rules rather than Salesforce status.
 - Record proposed changes locally. Do not write back to Salesforce or custodians.
 
-Further matching, valuation, and duplicate-handling decisions will be documented here as they are made.
+The current run is a snapshot in `reconciliation.run`; later runs append new statuses and AUM decisions rather than overwriting prior run results. Core refresh remains a current-snapshot rebuild and needs versioning before production use.
 
 ## Next steps
 
-1. Implement deterministic matching, exception reasons, and AUM aggregation in `reconciliation`.
-2. Add role-enforced exception review, approval, undo, and audit logging.
-3. Add an offline AI provider with structured output validation and a visible model-input preview.
-4. Test matching, authorization, and audit reversal behavior.
+1. Add role-enforced exception review, approval, undo, and audit logging.
+2. Add an offline AI provider with structured output validation and a visible model-input preview.
+3. Add tests for authorization and audit reversal behavior.
 
 ## Time log
 
