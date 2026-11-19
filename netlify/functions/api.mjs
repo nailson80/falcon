@@ -24,7 +24,13 @@ async function listExceptions(user){
     ar.sf_household_id AS resolved_household_id,
     COALESCE(hm.target_household_id,ar.sf_household_id,sa.sf_household_id) AS canonical_household_id,
     COALESCE(ch.household_name,h.household_name) AS canonical_household_name,
-    CASE WHEN er.proposal_id IS NOT NULL OR (s.status='custodian_only' AND ar.proposal_id IS NOT NULL) THEN 'resolved' ELSE 'open' END AS review_state
+    CASE WHEN s.status='custodian_only' AND ar.proposal_id IS NOT NULL THEN 'linked'
+         WHEN er.review_outcome='accepted_as_reported' THEN 'accepted'
+         WHEN er.review_outcome='needs_source_follow_up' THEN 'follow_up'
+         WHEN EXISTS (SELECT 1 FROM reconciliation.proposed_change p WHERE p.status='pending' AND
+           ((p.action='resolve_exception' AND p.target_run_id=s.run_id AND p.target_source_kind=s.source_kind AND p.target_source_file=s.source_file AND p.target_source_row=s.source_row)
+           OR (p.action='link_account' AND p.target_account_id=s.custodian||':'||s.account_number_key AND s.status='custodian_only'))) THEN 'pending'
+         ELSE 'open' END AS review_state
     FROM reconciliation.current_exceptions s
     LEFT JOIN core.salesforce_account sa ON sa.sf_account_id=s.sf_account_id
     LEFT JOIN core.household h ON h.sf_household_id=sa.sf_household_id
@@ -37,6 +43,7 @@ async function listExceptions(user){
     ORDER BY s.custodian,s.source_kind,s.source_file,s.source_row`,[user.role,user.advisor_name]);
   return rows;
 }
+async function households(){const {rows}=await pool.query('SELECT sf_household_id,household_name,primary_advisor_name FROM core.household ORDER BY primary_advisor_name,household_name');return rows;}
 async function proposals(){const {rows}=await pool.query(`SELECT p.*,h.household_name AS target_household_name FROM reconciliation.proposed_change p LEFT JOIN core.household h ON h.sf_household_id=p.target_household_id ORDER BY p.proposal_id DESC LIMIT 200`);return rows;}
 async function audit(){const {rows}=await pool.query('SELECT * FROM reconciliation.change_audit ORDER BY audit_id DESC LIMIT 300');return rows;}
 async function propose(user,input){
@@ -57,11 +64,12 @@ async function propose(user,input){
       if(pair.rows[0].n!==2||pair.rows[0].advisors!==1||pair.rows[0].assigned!==2)throw Object.assign(new Error('Household merges require the same assigned advisor'),{status:400});
     }
     if(action==='resolve_exception'){
+      if(!['accepted_as_reported','needs_source_follow_up'].includes(input.review_outcome))throw Object.assign(new Error('Choose a review outcome'),{status:400});
       const run=Number(input.target_run_id),kind=String(input.target_source_kind||''),file=String(input.target_source_file||''),row=Number(input.target_source_row);
       if(!Number.isSafeInteger(run)||!Number.isSafeInteger(row)||!['custodian','salesforce'].includes(kind)||!(await client.query('SELECT 1 FROM reconciliation.current_exceptions WHERE run_id=$1 AND source_kind=$2 AND source_file=$3 AND source_row=$4',[run,kind,file,row])).rowCount)throw Object.assign(new Error('Unknown current exception'),{status:400});
       exception={run,kind,file,row};
     }
-    const {rows:[p]}=await client.query(`INSERT INTO reconciliation.proposed_change(action,target_account_id,source_household_id,target_household_id,rationale,proposed_by,target_run_id,target_source_kind,target_source_file,target_source_row) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[action,account,source,target,reason,user.auth_user_id,exception?.run||null,exception?.kind||null,exception?.file||null,exception?.row||null]);
+    const {rows:[p]}=await client.query(`INSERT INTO reconciliation.proposed_change(action,target_account_id,source_household_id,target_household_id,rationale,proposed_by,target_run_id,target_source_kind,target_source_file,target_source_row,review_outcome) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,[action,account,source,target,reason,user.auth_user_id,exception?.run||null,exception?.kind||null,exception?.file||null,exception?.row||null,action==='resolve_exception'?input.review_outcome:null]);
     await client.query(`INSERT INTO reconciliation.change_audit(proposal_id,event,actor_id,after_value,reason) VALUES($1,'proposed',$2,$3,$4)`,[p.proposal_id,user.auth_user_id,p,reason]);
     await client.query('COMMIT');return p;
   }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
@@ -97,7 +105,7 @@ async function decide(user,id,decision,reason){
       } else if(p.action==='merge_household') await client.query(`INSERT INTO ${table}(source_household_id,target_household_id,proposal_id) VALUES($1,$2,$3)`,[p.source_household_id,p.target_household_id,id]);
       else {
         if(!(await client.query('SELECT 1 FROM reconciliation.current_exceptions WHERE run_id=$1 AND source_kind=$2 AND source_file=$3 AND source_row=$4',keys)).rowCount)throw Object.assign(new Error('Exception is no longer current'),{status:409});
-        await client.query(`INSERT INTO ${table}(run_id,source_kind,source_file,source_row,proposal_id,rationale) VALUES($1,$2,$3,$4,$5,$6)`,[...keys,id,p.rationale]);
+        await client.query(`INSERT INTO ${table}(run_id,source_kind,source_file,source_row,proposal_id,rationale,review_outcome) VALUES($1,$2,$3,$4,$5,$6,$7)`,[...keys,id,p.rationale,p.review_outcome]);
       }
     }
     if(decision==='undo'){
@@ -117,6 +125,7 @@ export async function handler(event){
     const user=await identity(event),path=route(event),method=event.httpMethod;
     if(method==='GET'&&path==='/me')return json(200,user);
     if(method==='GET'&&path==='/exceptions')return json(200,await listExceptions(user));
+    if(method==='GET'&&path==='/households'){operations(user);return json(200,await households())}
     if(method==='GET'&&path==='/proposals'){operations(user);return json(200,await proposals())}
     if(method==='GET'&&path==='/audit'){operations(user);return json(200,await audit())}
     if(method==='POST'&&path==='/proposals')return json(201,await propose(user,JSON.parse(event.body||'{}')));

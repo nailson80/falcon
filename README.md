@@ -123,7 +123,17 @@ Run `npm run db:app` once after the core model exists. The app migration creates
 | `exception_resolution` | Run-specific, reasoned dispositions for other exceptions |
 | `change_audit` | Append-only API event history with actor, time, before/after values, and undo reference |
 
-The app does not change `raw`, `core`, Salesforce, or custodian data. `current_exceptions` remains the source reconciliation finding; the app marks a linked custodian-only account or an approved exception disposition as **resolved** in its review state. Other exception types are never silently closed by a household link. An undo removes the active overlay and records a reversing audit event. Existing overlays are never silently overwritten; a reviewer must undo an earlier approval first. Household merges require both households to have the same primary advisor, preserving Advisor visibility. Since `core` is a rebuildable snapshot, app state stores source IDs without foreign keys into it and checks current records when proposing and approving.
+The app does not change `raw`, `core`, Salesforce, or custodian data. `current_exceptions` remains the source reconciliation finding even after a review decision. The separate review state is **Needs review**, **Awaiting approval**, **Household linked**, **Accepted as reported**, or **Source follow-up needed**. A household link only addresses a custodian-only account's household assignment; it does not create the missing Salesforce account. An accepted finding means Operations decided the reported difference needs no source change. A source follow-up decision records that the issue remains open with the upstream owner. An undo removes the active app overlay and records a reversing audit event. Existing overlays are never silently overwritten; a reviewer must undo an earlier approval first. Household merges require both households to have the same primary advisor, preserving Advisor visibility. Since `core` is a rebuildable snapshot, app state stores source IDs without foreign keys into it and checks current records when proposing and approving.
+
+### Review workflow
+
+| Tab | What it shows | What Operations does there |
+| --- | --- | --- |
+| **Exceptions** | Every source finding in the latest reconciliation run, its reason, and its separate review state | Propose a household link for a custodian-only account, or propose an explicit review outcome with supporting evidence |
+| **Awaiting approval** | Pending proposals and active approved app decisions | Approve or reject a proposal, undo an approval, or propose a household merge |
+| **History & audit** | Proposal, approval, rejection, and undo events, including actor, time, reason, and before/after values | Inspect the permanent decision trail |
+
+A proposal does not change a review state to an approved outcome. Only approval writes an active resolution in `reconciliation` and an audit event. Advisors see the Exceptions tab for their households and cannot propose or approve. The three earlier smoke-test decisions were approved and undone; they remain in History & audit but there are no active resolutions from them.
 
 ### Local setup
 

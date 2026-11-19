@@ -79,3 +79,11 @@ CREATE TABLE IF NOT EXISTS reconciliation.exception_resolution (
   rationale text NOT NULL,
   PRIMARY KEY(run_id,source_kind,source_file,source_row)
 );
+
+-- A reviewed exception needs a specific outcome; a note alone is not a source fix.
+ALTER TABLE reconciliation.proposed_change ADD COLUMN IF NOT EXISTS review_outcome text;
+ALTER TABLE reconciliation.exception_resolution ADD COLUMN IF NOT EXISTS review_outcome text;
+ALTER TABLE reconciliation.proposed_change DROP CONSTRAINT IF EXISTS proposed_change_review_outcome_check;
+ALTER TABLE reconciliation.proposed_change ADD CONSTRAINT proposed_change_review_outcome_check CHECK (
+  (action='resolve_exception' AND review_outcome IN ('accepted_as_reported','needs_source_follow_up'))
+  OR (action<>'resolve_exception' AND review_outcome IS NULL));
