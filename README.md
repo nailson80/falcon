@@ -1,6 +1,6 @@
 # Falcon account reconciliation
 
-Work in progress for the Falcon Wealth Planning full-stack take-home assessment.
+Assessment implementation for Falcon Wealth Planning account reconciliation and Operations review.
 
 ## Run
 
@@ -72,7 +72,7 @@ First run: 106 matched source rows (53 pairs), 5 custodian-only rows, 4 Salesfor
 
 ## AUM
 
-AUM comes from custodian market values, including accounts absent from Salesforce. The advisor is the custodian rep-code mapping; an unmapped code stays in an `Unmapped` bucket. The one blank value is excluded from numeric totals, not converted to zero. The duplicate Fidelity observations agree on value, date, advisor, registration, and owner context, so the account contributes once. An inconsistent duplicate would be excluded pending review. The negative value contributes as negative AUM and is flagged. Salesforce `Closed` or `Transferring` status does not erase a custodian-reported balance.
+AUM comes from custodian market values, including accounts absent from Salesforce. The advisor is the custodian rep-code mapping; an unmapped code stays in an `Unmapped` bucket. The one blank value is excluded from numeric totals, not converted to zero. The duplicate Fidelity observations agree on value, date, advisor, registration, and owner context, so the account contributes once. An inconsistent duplicate would be excluded pending review. The negative value contributes as negative AUM and is flagged. Salesforce `Closed` or `Transferring` status does not erase a custodian-reported balance. A likely in-flight ACAT appears in both the 2026-10-30 Schwab and 2026-11-06 Fidelity files; the mixed-date sum may count approximately $2.2 million of the same assets twice. See the candidate evidence and verification judgment in [RECONCILIATION.md](RECONCILIATION.md).
 
 | Advisor | Fidelity, as of 2026-11-06 | Schwab, as of 2026-10-30 | Mixed-date sum |
 | --- | ---: | ---: | ---: |
@@ -100,12 +100,13 @@ The current run is a snapshot in `reconciliation.run`; later runs append new sta
 ## Next steps
 
 1. Add tests for authorization and audit reversal behavior.
-2. Add an offline AI provider with structured output validation and a visible model-input preview, if the assessment scope permits.
+2. Extend the offline explanation interface to an external model only after provider configuration, privacy review, and output validation are in place.
+3. Add a household-duplicate review queue and confirm the cross-source candidate relationships listed in `RECONCILIATION.md`.
 
 ## Time log
 
 - Started: 2026-11-18 16:36 PST (repository setup and write-up scaffolding).
-- Ended: in progress.
+- Ended: 2026-11-18 18:39 PST (including follow-up review and documentation).
 
 ## Operations app
 
@@ -134,6 +135,10 @@ The app does not change `raw`, `core`, Salesforce, or custodian data. `current_e
 
 A proposal does not change a review state to an approved outcome. Only approval writes an active resolution in `reconciliation` and an audit event. Advisors see the Exceptions tab for their households and cannot propose or approve. The three earlier smoke-test decisions were approved and undone; they remain in History & audit but there are no active resolutions from them.
 
+### Offline exception explanation
+
+Operations can select **Explain exception** for one row. The API sends only an explicit allowlist of reconciliation fields to the default `mock/offline` provider; no API key is needed. The dialog shows the exact JSON input under **Exact model input (debug view)**. Notes, owner names, email, and tax identifiers are excluded. The provider returns a structured summary, evidence, suggested action, confidence, and limitations; the server validates the shape and allowed action, and the browser escapes displayed text. An explanation is advice only: it cannot create a proposal, approve one, or modify source data. The provider interface in `src/exception-ai.mjs` can support a later external model while preserving the input and output checks.
+
 ### Local setup
 
 1. Put `DATABASE_URL` and `NEON_AUTH_URL` in ignored `.env`. `npm run db:app` applies the app schema.
@@ -142,6 +147,8 @@ A proposal does not change a review state to an approved outcome. Only approval 
 4. In Netlify, set `DATABASE_URL` and `NEON_AUTH_URL` as environment variables. Set Node 22 (see `.nvmrc`) and use the repository's `netlify.toml` build settings. Add the deployed Netlify origin to Neon Auth's trusted origins.
 
 Test logins follow the `first.last@falcon.example` convention: `dana.whitfield`, `marcus.lee`, `priya.nair`, and `tom.alvarez`, plus `operations@falcon.example`. Use the local `.env` value of `TEST_USER_PASSWORD` for all five. These are exercise accounts; production requires individual Operations identities, unique credentials, and durable advisor IDs.
+
+A fresh clone needs access to a Neon project with the seeded data and Auth users, or a deployed Netlify site connected to that project. No public Netlify URL is configured in this repository. Provide evaluators the site URL and test credentials through a secure channel; do not commit either database credentials or the shared exercise password.
 
 The current source files are a one-time snapshot. A later weekly import needs immutable batch IDs and review of active overlays against the new snapshot. Account links and exception dispositions are tied to a reconciliation run, so a new run does not inherit an approved review state. Household merges remain app-level mappings and should be reviewed after a source refresh. The audit log currently contains three labeled smoke-test proposals, each approved and undone; no active resolution remains.
 

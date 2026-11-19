@@ -52,3 +52,5 @@ Candidate account matches require **both** custodian and normalized account numb
 ## Coverage and consequences
 
 The latest quality check found 45 Fidelity observations, 20 Schwab observations, 63 Salesforce accounts, 34 households, and 8 rep-code mappings. Every CSV row is present in `raw` and every `raw` row in `core`; the check found zero omissions or cell mismatches. This confirms preservation, not agreement. The 22 source exceptions and reasons are listed in [RECONCILIATION.md](RECONCILIATION.md) and queryable in `reconciliation.current_exceptions`. App review decisions are separate from source findings.
+
+Cross-record review leads, including a dropped leading zero, a Salesforce custodian conflict, a possible ACAT overlap, and duplicate household candidates, are documented in [RECONCILIATION.md](RECONCILIATION.md). They are not silently converted into matches or removed from AUM.

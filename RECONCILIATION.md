@@ -27,6 +27,17 @@ The first run classified all 65 custodian observations and 63 Salesforce financi
 | Salesforce financial accounts CSV row 42 | Conflicting | Salesforce financial account is not `Open`. |
 | Salesforce financial accounts CSV row 61 | Salesforce only | No custodian account, and Salesforce status is not `Open`. |
 
+## Additional cross-record review leads
+
+These are **candidate relationships**, not automatic matches. The strict matching rule above still classifies the source rows as exceptions until Operations verifies the source records. They do not change the published per-custodian AUM totals.
+
+| Candidate | Evidence and current result | Judgment / next review |
+| --- | --- | --- |
+| Leading zero lost | Schwab row 15 and Salesforce financial account row 31 have the same digits except for one leading zero, and both identify Schwab. Current statuses are custodian-only and Salesforce-only because the normalized keys differ. | Likely spreadsheet or CRM formatting loss. Confirm against source documents before linking; never strip leading zeros globally because they can be meaningful. |
+| Custodian recorded incorrectly | Fidelity row 28 and Salesforce financial account row 8 have the same normalized account number, but Salesforce records **Schwab**. The account and household context point toward the same relationship, while the custodian field conflicts. | Verify which Salesforce custodian is correct before proposing a source correction. Keep both source-only exceptions until confirmed. |
+| Possible in-flight ACAT overlap | Schwab row 11 reports $2,210,400.00 on 2026-10-30 and its Salesforce account row 42 is `Transferring`; the note references an ACAT to Fidelity. Fidelity row 8 reports $2,198,775.42 on 2026-11-06 for a trust with the same owner and advisor context but a different account number. | Possible transfer of the same assets, not proven from these exports. Both balances remain in their dated custodian totals. The $68,985,917.34 mixed-date sum may overstate distinct assets by about $2.2 million; do not use it as a single-date firm AUM without transfer verification. |
+| Possible duplicate Salesforce households | `sf_households.csv` rows 12 and 32 have variant names, the same email, and the same primary advisor. | Review household IDs and underlying records before an app-only merge. Household duplicates are **not** currently part of `reconciliation.current_exceptions`, which covers financial-account rows; this remains a coverage gap for a future household quality queue. |
+
 ## How to review or rerun
 
 `npm run db:reconcile` appends a run. Query `reconciliation.current_account_status` for every source account and `reconciliation.current_exceptions` for the latest exception list. `reconciliation.current_aum_by_advisor_custodian` and `reconciliation.current_aum_by_custodian` provide the latest totals with source-specific `as_of_date` fields. The matching and AUM rules are documented in [README.md](README.md).

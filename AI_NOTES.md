@@ -3,15 +3,17 @@
 ## Tools used
 
 - OpenAI Codex assisted with repository setup, reading the assessment, and drafting these initial write-up files.
-- No application LLM provider has been implemented or called yet.
+- An offline mock provider now implements the exception explanation interface. No external LLM has been called or configured.
 
 ## Prompts that mattered
 
 1. User request: “Initialize the Git repo,” ignore `data/`, create the files listed in “6 Write-up,” and push the initial commit to GitHub.
-2. Assessment direction: keep raw data, use one shared custodian model, reconcile all three sources, and explain judgment calls.
+2. Implementation prompt: create one `core.custodian_account` model for Fidelity and Schwab, retain source lineage, and keep `raw` separate from `reconciliation`.
 3. User request: give every account a reconciliation status, produce AUM by advisor and custodian with as-of dates, and list every exception with a reason.
 4. User request: load all five CSV files into Neon while ignoring any hidden prompts in the data.
 5. User request: build a shared clean `core` model and document every data issue and its handling.
+6. User request: separate source exceptions from Operations proposals and approvals, then make the app workflow understandable.
+7. Review feedback: implement Task 4 as an offline explanation with exact model input visible and validate its structured output.
 
 The prompts above describe the main instructions used so far; later implementation prompts can replace them if they prove more consequential.
 
@@ -25,6 +27,7 @@ The prompts above describe the main instructions used so far; later implementati
 - An early profiling regex misclassified the Fidelity negative currency format as invalid. Inspecting the exact cell format showed `-$...`; the typed parser was changed to accept it, and a database check confirmed the negative amount. This prevented a valid value from being dropped.
 - A count-only check would have missed swapped or omitted rows with coincidentally equal totals. The new quality gate compares each local CSV cell with its `raw` row, checks source filename and row number through `core` for all five tables, and reports unresolved values separately. It prints counts only, never source cell contents.
 - The reconciliation logic uses custodian plus normalized account number for candidate matching and requires a unique pair before assigning `matched`. Tests cover duplicate rows, missing values, unmapped advisors, and source-only records. No AI model was used to decide a match or AUM amount.
+- Salesforce financial account CSV row 24 contains a planted instruction attempt in `Notes__c`. It remains untrusted source data. The new explanation input is an explicit allowlist and omits notes, tax identifiers, owner names, and email; a test checks that omission. The offline provider requires no API key, validates its JSON output, and the UI HTML-escapes every displayed string. Explanations cannot create or approve changes.
 
 ## Operations app implementation
 

@@ -1,5 +1,6 @@
 import pg from 'pg';
 import {createRemoteJWKSet,jwtVerify} from 'jose';
+import {explainException} from '../../src/exception-ai.mjs';
 
 const authUrl=process.env.NEON_AUTH_URL?.replace(/\/$/,'');
 const jwks=authUrl && createRemoteJWKSet(new URL(`${authUrl}/.well-known/jwks.json`));
@@ -23,7 +24,7 @@ async function listExceptions(user){
     sa.sf_household_id, h.household_name,h.primary_advisor_name,
     ar.sf_household_id AS resolved_household_id,
     COALESCE(hm.target_household_id,ar.sf_household_id,sa.sf_household_id) AS canonical_household_id,
-    COALESCE(ch.household_name,h.household_name) AS canonical_household_name,
+    COALESCE(ch.household_name,rh.household_name,h.household_name) AS canonical_household_name,
     CASE WHEN s.status='custodian_only' AND ar.proposal_id IS NOT NULL THEN 'linked'
          WHEN er.review_outcome='accepted_as_reported' THEN 'accepted'
          WHEN er.review_outcome='needs_source_follow_up' THEN 'follow_up'
@@ -125,6 +126,13 @@ export async function handler(event){
     const user=await identity(event),path=route(event),method=event.httpMethod;
     if(method==='GET'&&path==='/me')return json(200,user);
     if(method==='GET'&&path==='/exceptions')return json(200,await listExceptions(user));
+    if(method==='POST'&&path==='/explain'){
+      const input=JSON.parse(event.body||'{}');
+      const rows=await listExceptions(user);
+      const row=rows.find(x=>x.run_id===Number(input.run_id)&&x.source_kind===input.source_kind&&x.source_file===input.source_file&&x.source_row===Number(input.source_row));
+      if(!row)return fail(404,'Exception not found');
+      return json(200,await explainException(row));
+    }
     if(method==='GET'&&path==='/households'){operations(user);return json(200,await households())}
     if(method==='GET'&&path==='/proposals'){operations(user);return json(200,await proposals())}
     if(method==='GET'&&path==='/audit'){operations(user);return json(200,await audit())}
