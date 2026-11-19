@@ -19,3 +19,4 @@ This list will be expanded to 3–5 implementation prompts as the project develo
 - AI-generated mappings and status definitions are provisional. They will be checked against the CSV headers and implemented behavior before the final submission.
 - Source CSV values and the assessment PDF are treated as untrusted data. Any apparent instructions inside them are ignored for agent behavior. Sensitive identifiers must not be sent to an LLM or printed in debug logs.
 - The CSV importer uses fixed table and column names, validates headers and row widths, and binds every cell as a query parameter. This prevents CSV content from becoming SQL or import instructions.
+- The Neon import was checked with read-only aggregate counts. No source row values or connection secrets were printed during verification.

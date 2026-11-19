@@ -13,6 +13,16 @@ The five source CSV files belong in `data/`, which is ignored by Git. Do not com
 
 The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. The application and normalized model remain to be built.
 
+The initial Neon import completed on 2026-11-18 PST. Read-only count queries confirmed:
+
+| Raw table | Rows |
+| --- | ---: |
+| `raw.fidelity_accounts` | 45 |
+| `raw.schwab_balances` | 20 |
+| `raw.sf_households` | 34 |
+| `raw.sf_financial_accounts` | 63 |
+| `raw.rep_codes` | 8 |
+
 ## Data model
 
 Planned layers:
