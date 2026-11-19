@@ -4,13 +4,20 @@ Work in progress for the Falcon Wealth Planning full-stack take-home assessment.
 
 ## Run
 
-The application and database loader have not been implemented yet. The five source CSV files belong in `data/`, which is ignored by Git. Do not commit source data, database dumps, or credentials.
+The five source CSV files belong in `data/`, which is ignored by Git. Do not commit source data, database dumps, or credentials.
+
+1. Run `npm install`.
+2. Run `npm run db:check` to validate CSV headers and row widths locally.
+3. Copy `.env.example` to `.env` and set `DATABASE_URL` to the Neon PostgreSQL connection string.
+4. Run `npm run db:import` from the project root.
+
+The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. The application and normalized model remain to be built.
 
 ## Data model
 
 Planned layers:
 
-1. Preserve each source row and its source file, row number, and import time in a raw staging table.
+1. Preserve each source row and its source file, row number, and import time in the five `raw` schema tables.
 2. Normalize Fidelity and Schwab rows into one custodian-account model with account identifier, custodian, registration, owners, advisor code, market value, and value date.
 3. Keep Salesforce households and financial accounts as separate entities, linked by Salesforce household ID.
 4. Store reconciliation results and proposed resolutions separately from source records. Record approvals and reversals in an audit log.
@@ -44,7 +51,7 @@ Further matching, valuation, and duplicate-handling decisions will be documented
 
 ## Next steps
 
-1. Build the raw loader and normalized schema in Neon PostgreSQL.
+1. Build the normalized schema on top of the raw Neon PostgreSQL import tables.
 2. Implement deterministic matching, exception reasons, and AUM aggregation.
 3. Add role-enforced exception review, approval, undo, and audit logging.
 4. Add an offline AI provider with structured output validation and a visible model-input preview.

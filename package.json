@@ -1,0 +1,13 @@
+{
+  "name": "falcon-reconciliation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:check": "node scripts/import-csv.mjs --check",
+    "db:import": "node scripts/import-csv.mjs"
+  },
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "pg": "^8.16.3"
+  }
+}
