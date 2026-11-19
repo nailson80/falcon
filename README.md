@@ -14,7 +14,7 @@ The five source CSV files belong in `data/`, which is ignored by Git. Do not com
 6. Run `npm run db:quality` to check row coverage and typed transformations after each refresh.
 7. Run `npm test`, then `npm run db:reconcile` to create a new reconciliation run. Query the `reconciliation.current_*` views for current statuses, exceptions, and AUM. The complete source-row exception list from the first run is in [RECONCILIATION.md](RECONCILIATION.md).
 
-The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. Reconciliation is implemented; the exceptions app remains to be built.
+The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. Reconciliation and the Netlify exception review app are implemented below.
 
 The initial Neon import completed on 2026-11-18 PST. Read-only count queries confirmed:
 
@@ -99,9 +99,8 @@ The current run is a snapshot in `reconciliation.run`; later runs append new sta
 
 ## Next steps
 
-1. Add role-enforced exception review, approval, undo, and audit logging.
-2. Add an offline AI provider with structured output validation and a visible model-input preview.
-3. Add tests for authorization and audit reversal behavior.
+1. Add tests for authorization and audit reversal behavior.
+2. Add an offline AI provider with structured output validation and a visible model-input preview, if the assessment scope permits.
 
 ## Time log
 
@@ -144,7 +143,7 @@ A proposal does not change a review state to an approved outcome. Only approval 
 
 Test logins follow the `first.last@falcon.example` convention: `dana.whitfield`, `marcus.lee`, `priya.nair`, and `tom.alvarez`, plus `operations@falcon.example`. Use the local `.env` value of `TEST_USER_PASSWORD` for all five. These are exercise accounts; production requires individual Operations identities, unique credentials, and durable advisor IDs.
 
-The current source files are a one-time snapshot. A later weekly import needs immutable batch IDs and review of active overlays against the new snapshot. Account links and exception dispositions are tied to a reconciliation run, so a new run does not inherit a resolved review state. Household merges remain app-level mappings and should be reviewed after a source refresh. The audit log currently contains three labeled smoke-test proposals, each approved and undone; no active resolution remains.
+The current source files are a one-time snapshot. A later weekly import needs immutable batch IDs and review of active overlays against the new snapshot. Account links and exception dispositions are tied to a reconciliation run, so a new run does not inherit an approved review state. Household merges remain app-level mappings and should be reviewed after a source refresh. The audit log currently contains three labeled smoke-test proposals, each approved and undone; no active resolution remains.
 
 ## Future work: historical AUM dashboards
 
