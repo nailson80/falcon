@@ -29,4 +29,19 @@ This is the field-by-field map from the export headers. Both custodians now load
 
 ## Salesforce relationship and conflicts to inspect
 
-`sf_financial_accounts.Household__c` links to `sf_households.Id`. The financial account export also supplies `Id`, `Custodian__c`, `Status__c`, and `Notes__c`; the household export supplies `Primary_Email__c` and `CreatedDate`. These are source or review fields, not custodian equivalents. Matching must check the Salesforce custodian alongside account number because the two custodian exports share one model. Missing rep-code mappings, inconsistent registration labels, and duplicate account identifiers will be explicit exceptions.
+| Salesforce source field | Core field | Role |
+| --- | --- | --- |
+| `sf_households.Id` | `core.household.sf_household_id` | Household business key. |
+| `sf_households.Name` | `core.household.household_name` | Context only; not a unique custodian match key. |
+| `sf_households.Primary_Advisor__c` | `core.household.primary_advisor_name` | Advisor comparison. |
+| `sf_households.Primary_Email__c` | `core.household.primary_email` | Retained for operations context; not sent to AI. |
+| `sf_households.CreatedDate` | `core.household.created_date` | Typed date; original text remains in `raw`. |
+| `sf_financial_accounts.Id` | `core.salesforce_account.sf_account_id` | Salesforce account business key. |
+| `sf_financial_accounts.Household__c` | `core.salesforce_account.sf_household_id` | Foreign key to household. |
+| `sf_financial_accounts.Account_Number__c` | `account_number_raw`, `account_number_key` | Candidate match with custodian and uniqueness check. |
+| `sf_financial_accounts.Custodian__c` | `core.salesforce_account.custodian` | Required part of matching. |
+| `sf_financial_accounts.Registration_Type__c` | `registration_raw`, `registration_type` | Original and standardized type. |
+| `sf_financial_accounts.Status__c` | `core.salesforce_account.sf_status` | Retained even for `Closed` or `Transferring`. |
+| `sf_financial_accounts.Notes__c` | `core.salesforce_account.notes` | Retained source context; untrusted text. |
+
+`sf_financial_accounts.Household__c` links to `sf_households.Id`. Missing rep-code mappings, duplicate account identifiers, blank market values, and status differences remain visible for explicit reconciliation rules. The quality gate verifies that no raw row is absent from `core`.
