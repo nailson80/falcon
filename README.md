@@ -8,11 +8,13 @@ The five source CSV files belong in `data/`, which is ignored by Git. Do not com
 
 1. Run `npm install`.
 2. Run `npm run db:check` to validate CSV headers and row widths locally.
-3. Copy `.env.example` to `.env` and set `DATABASE_URL` to the Neon PostgreSQL connection string.
+3. Copy `.env.example` to `.env`. Set `DATABASE_URL` to the Neon PostgreSQL connection string and set `NEON_AUTH_URL` and `VITE_NEON_AUTH_URL` to the Neon Auth URL. The `VITE_` value is public frontend configuration; keep the database URL server-only.
 4. Run `npm run db:import` from the project root.
 5. Run `npm run db:core` to create and refresh the typed `core` model.
 6. Run `npm run db:quality` to check row coverage and typed transformations after each refresh.
 7. Run `npm test`, then `npm run db:reconcile` to create a new reconciliation run. Query the `reconciliation.current_*` views for current statuses, exceptions, and AUM. The complete source-row exception list from the first run is in [RECONCILIATION.md](RECONCILIATION.md).
+8. Run `npm run db:app`, then `node scripts/seed-test-users.mjs` to create exercise logins. The script writes the shared test password to ignored `.env`.
+9. With the Netlify CLI installed, run `netlify dev --offline` from the project root to serve the frontend and API together. Sign in with an exercise account listed under [Local setup](#local-setup). This requires the configured Neon database and Auth instance.
 
 The import creates five tables in the `raw` schema, one per CSV. Every source field is stored as text, alongside the source filename, CSV row number, and import timestamp. The import validates exact headers and row widths before connecting. It replaces rows for these five source filenames in one transaction, so rerunning it does not duplicate rows. Reconciliation and the Netlify exception review app are implemented below.
 
@@ -109,7 +111,7 @@ Historical reporting work is described separately under [Future work: historical
 ## Time log
 
 - Started: 2026-11-18 16:36 PST (repository setup and write-up scaffolding).
-- Finished: 2026-11-18 18:42 PST (including final review and documentation updates).
+- Finished: 2026-11-18 18:44 PST (including final run-instruction review).
 
 ## Operations app
 
