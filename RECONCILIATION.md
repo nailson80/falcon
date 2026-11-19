@@ -30,3 +30,7 @@ The first run classified all 65 custodian observations and 63 Salesforce financi
 ## How to review or rerun
 
 `npm run db:reconcile` appends a run. Query `reconciliation.current_account_status` for every source account and `reconciliation.current_exceptions` for the latest exception list. `reconciliation.current_aum_by_advisor_custodian` and `reconciliation.current_aum_by_custodian` provide the latest totals with source-specific `as_of_date` fields. The matching and AUM rules are documented in [README.md](README.md).
+
+## App review state
+
+The Netlify app displays the latest `reconciliation.current_exceptions` and approved app-only resolutions. A linked custodian-only account or approved reasoned exception disposition remains in the historical source exception view but appears as **resolved** in the app. Proposals and approval decisions live in `reconciliation.proposed_change`; active overlays are in `reconciliation.account_household_resolution` and `reconciliation.household_merge_resolution` and `reconciliation.exception_resolution`; every proposal, approval, rejection, and undo is recorded in `reconciliation.change_audit`. See the Operations app section of `README.md` for access and setup.

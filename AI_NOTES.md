@@ -25,3 +25,9 @@ The prompts above describe the main instructions used so far; later implementati
 - An early profiling regex misclassified the Fidelity negative currency format as invalid. Inspecting the exact cell format showed `-$...`; the typed parser was changed to accept it, and a database check confirmed the negative amount. This prevented a valid value from being dropped.
 - A count-only check would have missed swapped or omitted rows with coincidentally equal totals. The new quality gate compares each local CSV cell with its `raw` row, checks source filename and row number through `core` for all five tables, and reports unresolved values separately. It prints counts only, never source cell contents.
 - The reconciliation logic uses custodian plus normalized account number for candidate matching and requires a unique pair before assigning `matched`. Tests cover duplicate rows, missing values, unmapped advisors, and source-only records. No AI model was used to decide a match or AUM amount.
+
+## Operations app implementation
+
+Codex helped build the Netlify app, Neon Auth integration, app-owned reconciliation tables, and audit/undo flow. The app does not call an LLM. Authentication uses Neon Auth; app roles are mapped from verified user IDs, and exception access is checked server-side. Source files remain data only. UI text from exceptions is escaped before rendering, and all database inputs use parameterized queries.
+
+A generated shared exercise password is kept only in ignored `.env`; it is not in the repository. The five test accounts were created in Neon Auth. Three automated workflow checks proposed, approved, then undid an exception disposition, account link, and household merge. Their nine audit events remain labeled as smoke tests; no active resolution remains. The app's source finding and app review state are kept distinct so an approval does not rewrite the warehouse snapshot.

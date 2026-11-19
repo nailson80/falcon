@@ -107,3 +107,31 @@ The current run is a snapshot in `reconciliation.run`; later runs append new sta
 
 - Started: 2026-11-18 16:36 PST (repository setup and write-up scaffolding).
 - Ended: in progress.
+
+## Operations app
+
+The Netlify app lives in `web/` with server-side endpoints in `netlify/functions/api.mjs`. Neon Auth owns user credentials and sessions. The API verifies Neon JWT signatures against its published key set, then resolves the stable user ID through `reconciliation.app_user`. Advisors can read exceptions tied to households whose `primary_advisor_name` matches their mapping. Operations can read all exceptions, propose changes, approve or reject proposals, undo approvals, and inspect the audit log. The browser never receives `DATABASE_URL`.
+
+Run `npm run db:app` once after the core model exists. The app migration creates these tables in `reconciliation`:
+
+| Table | Purpose |
+| --- | --- |
+| `app_user` | Neon Auth user ID, app role, and Advisor mapping |
+| `proposed_change` | Pending or decided app-only fix with rationale and actor |
+| `account_household_resolution` | Active approved account-to-household overlays |
+| `household_merge_resolution` | Active approved canonical household overlays |
+| `exception_resolution` | Run-specific, reasoned dispositions for other exceptions |
+| `change_audit` | Append-only API event history with actor, time, before/after values, and undo reference |
+
+The app does not change `raw`, `core`, Salesforce, or custodian data. `current_exceptions` remains the source reconciliation finding; the app marks a linked custodian-only account or an approved exception disposition as **resolved** in its review state. Other exception types are never silently closed by a household link. An undo removes the active overlay and records a reversing audit event. Existing overlays are never silently overwritten; a reviewer must undo an earlier approval first. Household merges require both households to have the same primary advisor, preserving Advisor visibility. Since `core` is a rebuildable snapshot, app state stores source IDs without foreign keys into it and checks current records when proposing and approving.
+
+### Local setup
+
+1. Put `DATABASE_URL` and `NEON_AUTH_URL` in ignored `.env`. `npm run db:app` applies the app schema.
+2. Run `node scripts/seed-test-users.mjs` to create the exercise accounts. It creates and keeps a shared, generated `TEST_USER_PASSWORD` in ignored `.env`; do not commit or use this password in production.
+3. Run `npm run dev` for the Vite frontend. For frontend plus Netlify Functions locally, run `netlify dev` with Netlify CLI. The Auth URL is exposed as a public frontend config value; the database URL is server-only.
+4. In Netlify, set `DATABASE_URL` and `NEON_AUTH_URL` as environment variables. Set Node 22 (see `.nvmrc`) and use the repository's `netlify.toml` build settings. Add the deployed Netlify origin to Neon Auth's trusted origins.
+
+Test logins follow the `first.last@falcon.example` convention: `dana.whitfield`, `marcus.lee`, `priya.nair`, and `tom.alvarez`, plus `operations@falcon.example`. Use the local `.env` value of `TEST_USER_PASSWORD` for all five. These are exercise accounts; production requires individual Operations identities, unique credentials, and durable advisor IDs.
+
+The current source files are a one-time snapshot. A later weekly import needs immutable batch IDs and review of active overlays against the new snapshot. Account links and exception dispositions are tied to a reconciliation run, so a new run does not inherit a resolved review state. Household merges remain app-level mappings and should be reviewed after a source refresh. The audit log currently contains three labeled smoke-test proposals, each approved and undone; no active resolution remains.
