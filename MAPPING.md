@@ -1,30 +1,30 @@
 # Source field mapping
 
-This is the initial field-by-field map from the export headers. Transformations and Salesforce matching rules will be confirmed during implementation. `No direct field` means the Salesforce export does not contain an equivalent field.
+This is the field-by-field map from the export headers. Both custodians now load into `core.custodian_account`; Salesforce loads into `core.household` and `core.salesforce_account`. `No direct field` means the Salesforce export does not contain an equivalent field. The full tax ID remains in `raw` and is reduced to last four digits in `core`.
 
 ## Fidelity
 
 | Fidelity field | Shared model field | Salesforce field or gap |
 | --- | --- | --- |
-| `Acct Number` | `account_number_raw`, `account_number_normalized` | `sf_financial_accounts.Account_Number__c`; normalize cautiously, preserve raw value. |
-| `Registration` | `registration` | `sf_financial_accounts.Registration_Type__c`; vocabulary may differ. |
-| `Primary Owner` | `primary_owner_name` | Possible household name context in `sf_households.Name`; no exact owner field. |
-| `Joint Owner` | `joint_owner_name` | No direct field. |
-| `Tax ID` | `tax_id_raw` (sensitive) | No direct field; do not expose in logs or model input. |
+| `Acct Number` | `account_number_raw`, `account_number_key` | `core.salesforce_account.account_number_raw`, `account_number_key`; normalize cautiously, preserve raw value. |
+| `Registration` | `registration_raw`, `registration_type` | `core.salesforce_account.registration_raw`, `registration_type`; source vocabulary is standardized. |
+| `Primary Owner` | `primary_owner` | Possible context in `core.household.household_name`; no exact owner field. |
+| `Joint Owner` | `joint_owner` | No direct field. |
+| `Tax ID` | `tax_id_last4` only; full value stays in `raw` | No direct field; do not expose in logs or model input. |
 | `Market Value` | `market_value` | No direct field in the Salesforce export. |
 | `As Of` | `value_date` | No direct field in the Salesforce export. |
-| `Rep Code` | `advisor_code` | `rep_codes.rep_code` plus `rep_codes.custodian` maps to `advisor_name`; compare with `sf_households.Primary_Advisor__c`. |
+| `Rep Code` | `rep_code`, `advisor_name` | `core.rep_code` maps to `advisor_name`; compare with `core.household.primary_advisor_name`. |
 
 ## Schwab
 
 | Schwab field | Shared model field | Salesforce field or gap |
 | --- | --- | --- |
-| `account_id` | `account_number_raw`, `account_number_normalized` | `sf_financial_accounts.Account_Number__c`; normalize cautiously, preserve raw value. |
-| `account_title` | `account_title` | Possible household name context in `sf_households.Name`; no exact title field. |
-| `account_type` | `registration` | `sf_financial_accounts.Registration_Type__c`; vocabulary may differ. |
+| `account_id` | `account_number_raw`, `account_number_key` | `core.salesforce_account.account_number_raw`, `account_number_key`; normalize cautiously, preserve raw value. |
+| `account_title` | `account_title` | Possible context in `core.household.household_name`; no exact title field. |
+| `account_type` | `registration_raw`, `registration_type` | `core.salesforce_account.registration_raw`, `registration_type`; source vocabulary is standardized. |
 | `total_value` | `market_value` | No direct field in the Salesforce export. |
 | `value_date` | `value_date` | No direct field in the Salesforce export. |
-| `advisor_code` | `advisor_code` | `rep_codes.rep_code` plus `rep_codes.custodian` maps to `advisor_name`; compare with `sf_households.Primary_Advisor__c`. |
+| `advisor_code` | `rep_code`, `advisor_name` | `core.rep_code` maps to `advisor_name`; compare with `core.household.primary_advisor_name`. |
 | `ssn_last4` | `tax_id_last4` (sensitive) | No direct field; partial identifier is insufficient for a unique match. |
 
 ## Salesforce relationship and conflicts to inspect
